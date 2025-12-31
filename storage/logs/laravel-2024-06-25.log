@@ -1,0 +1,18 @@
+[2024-06-25 23:16:02] Production.INFO: PHP Mailer - Cache Available  
+[2024-06-25 23:16:02] Production.INFO: Check Object count of Active SES Connection with cache Objects  
+[2024-06-25 23:16:02] Production.INFO: Coming ses connection loop else {"index":0} 
+[2024-06-25 23:16:02] Production.INFO: Coming ses connection loop else {"index":1} 
+[2024-06-25 23:16:02] Production.INFO: sentemail_approval p int in resolution_id =   
+[2024-06-25 23:16:02] Production.INFO: get voter data where email_sent N resolution_id =  
+[2024-06-25 23:16:03] Production.INFO: PHP Mailer - Cache Available  
+[2024-06-25 23:16:03] Production.INFO: Check Object count of Active SES Connection with cache Objects  
+[2024-06-25 23:16:03] Production.INFO: Coming ses connection loop else {"index":0} 
+[2024-06-25 23:16:03] Production.INFO: Coming ses connection loop else {"index":1} 
+[2024-06-25 23:16:03] Production.INFO: sentemail_approval p int in resolution_id =   
+[2024-06-25 23:16:03] Production.INFO: get voter data where email_sent N resolution_id =  
+[2024-06-25 23:16:06] Production.INFO: get voter data update email_sent Y   
+[2024-06-25 23:16:06] Production.INFO: get voter data where email_sent N resolution_id =  
+[2024-06-25 23:16:07] Production.INFO: get voter data update email_sent Y   
+[2024-06-25 23:16:07] Production.INFO: get voter data update email_sent Y   
+[2024-06-25 23:16:07] Production.INFO: get voter data where email_sent N resolution_id =  
+[2024-06-25 23:16:08] Production.INFO: get voter data update email_sent Y   
