@@ -141,7 +141,7 @@
             <li><b>{{ $member->resolution->user->user_type == 1 ? 'AR' : 'Scrutinizer' }} Name:</b>
                 {{ $member->resolution->user->name }}</li>
             <li><b>Vote Recorded On:</b>
-                {{ Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $votes[0]->updated_at)->format('d-M-Y h:i A') }}</li>
+                {{ $votes->count() > 0 ? Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $votes[0]->updated_at)->format('d-M-Y h:i A') : 'No votes recorded' }}</li>
             <li><b>Voting % and Amount:</b> {{ $member->share }}</li>
         </ul>
 

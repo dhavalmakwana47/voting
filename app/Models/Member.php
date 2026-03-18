@@ -19,6 +19,7 @@ class Member extends Model
         'user_name',
         'password',
         'otp',
+        'voting_otp',
         'session_id',
         'approval_status',
         'email_sent',

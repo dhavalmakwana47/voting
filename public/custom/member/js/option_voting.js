@@ -10,6 +10,20 @@ function continueForModify() {
 
         let inputs = document.querySelectorAll(`input[name="${inputName}"]`);
         let groupChecked = false;
+        let isSkipped = false;
+
+        // Check if this group is skipped
+        for (const input of inputs) {
+            if (input.dataset.skip === '1') {
+                isSkipped = true;
+                break;
+            }
+        }
+
+        // Skip validation for optional items
+        if (isSkipped) {
+            continue;
+        }
 
         for (const input of inputs) {
             if (input.checked) {
@@ -151,11 +165,9 @@ $("#backId").on("click", function () {
     $(".comment_section").removeAttr("readonly");
     $(".voting_input").each(function () {
         $(this).removeAttr("onclick");
+        $(this).removeAttr("disabled");
         $(this).show();
         $(this).next().show();
-        if ($(this).next().next().is("img")) {
-            $(this).next().next().show();
-        }
     });
 });
 
@@ -166,6 +178,49 @@ $("#clear-all").on("click", function () {
 });
 
 $("#submitForm").on("click", function () {
+    // Check if this button already has a custom handler
+    if ($(this).data('custom-handler')) {
+        return; // Don't add default handler if custom one exists
+    }
     $(this).attr("disabled", true);
     $("#voting_form").submit();
+});
+
+$("#verify-otp").on("click", function() {
+    const otp = $('#otp-input').val();
+    
+    if (!otp) {
+        $('#otp-error').text('Please enter OTP').show();
+        return;
+    }
+    
+    const memberId = $("input[name='member_id']").val();
+    
+    $.ajax({
+        url: '/member/verify-voting-otp',
+        method: 'POST',
+        data: {
+            _token: $('meta[name="csrf-token"]').attr('content'),
+            member_id: memberId,
+            otp: otp
+        },
+        success: function(response) {
+            if (response.success) {
+                $('#otp-modal').modal('hide');
+                $('#submitForm').attr('disabled', true);
+                $('#voting_form').submit();
+            } else {
+                $('#otp-error').text(response.message || 'Invalid OTP').show();
+            }
+        },
+        error: function() {
+            $('#otp-error').text('Error verifying OTP').show();
+        }
+    });
+});
+
+// Clear OTP error when modal is closed
+$('#otp-modal').on('hidden.bs.modal', function () {
+    $('#otp-input').val('');
+    $('#otp-error').hide();
 });

@@ -143,6 +143,14 @@
                                 </div>
                             </div>
 
+                            <div class="col-sm-3 mb-2">
+                                <label for="voting_otp">Enable Voting OTP</label>
+                                <div>
+                                    <input type="checkbox" data-bootstrap-switch="" name="voting_otp"
+                                        {{ isset($resolution) && $resolution->voting_otp ? 'checked' : '' }}>
+                                </div>
+                            </div>
+
                             <div class="col-sm-12">
                                 <label>Voting Type*</label>
                                 <div class="input-group">
@@ -315,7 +323,7 @@
                                         <input type="hidden" name="resolution[{{ $loopIndex }}][resolution_id]"
                                             id="resolution_details_id-{{ $value->id }}" value="{{ $value->id }}">
                                        
-                                        <div class="col-6 mb-2">
+                                        <div class="col-4 mb-2">
                                             <select class="form-control required-section"
                                                 name="resolution[{{ $loopIndex }}][option_type]" disabled>
                                                 <option value="radio"
@@ -325,21 +333,44 @@
                                                 </option>
                                             </select>
                                         </div>
-                                        <div class="col-3 mb-2">
+                                        <div class="col-2 mb-2">
                                             <input class="form-control required-section" type="integer" min="1"
                                                 name="resolution[{{ $loopIndex }}][min]"
-                                                placeholder="Minimum checkable" value="{{$value->min??1}}" required disabled>
+                                                placeholder="Min" value="{{$value->min??1}}" required disabled>
                                         </div>
-                                        <div class="col-3 mb-2">
+                                        <div class="col-2 mb-2">
                                             <input class="form-control required-section" type="integer" min="1"
                                                 name="resolution[{{ $loopIndex }}][max]"
-                                                placeholder="Maximum checkable" value="{{$value->max??1}}" required disabled>
+                                                placeholder="Max" value="{{$value->max??1}}" required disabled>
+                                        </div>
+                                        <div class="col-2 mb-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input required-section" type="checkbox" 
+                                                    name="resolution[{{ $loopIndex }}][skip]" 
+                                                    value="1" {{ $value->skip ? 'checked' : '' }} disabled>
+                                                <label class="form-check-label">Skip</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-2 mb-2">
+                                            <a href="{{ route('memberresolutiondetails.download', Crypt::encrypt($value->id)) }}"
+                                                class="btn btn-success btn-sm">View</a>
+                                            @if ($loopIndex == 0)
+                                                <button type="button" class="btn btn-primary required-section btn-sm"
+                                                    id="rowAdder" onclick="AddResolutionDetalisRaw()"
+                                                    {{ $active }} disabled>Add</button>
+                                            @else
+                                                @if ($value->votes->count() < 1)
+                                                    <button type="button"
+                                                        class="btn btn-danger required-section btn-sm reolution-delete-btn"
+                                                        {{ $active }}>Delete</button>
+                                                @endif
+                                            @endif
                                         </div>
                                         <div class="col-6">
                                             <textarea class="resolution_description required-section" cols="60" rows="10" disabled
                                                 name="resolution[{{ $loopIndex }}][description]" {{ $active }} required>{{ $value->description }}</textarea>
                                         </div>
-                                        <div class="col-4">
+                                        <div class="col-6">
                                             <input type="file" class="custom-file-input required-section" disabled
                                                 value="{{ asset('uploads/resolution_details_files/' . $value->file_name) }}"
                                                 name="resolution[{{ $loopIndex }}][resolution_files]"
@@ -349,23 +380,6 @@
                                             <label class="custom-file-label">{{ $value->file_name }}</label>
                                             <span class="error" id="{{ 'member-file-error-' . $loop->index }}"></span>
                                             <br>
-                                        </div>
-                                        <div class="col-2">
-                                            <a href="{{ route('memberresolutiondetails.download', Crypt::encrypt($value->id)) }}"
-                                                class="btn btn-success">View</a>
-                                            @if ($loopIndex == 0)
-                                                <button type="button" class="btn btn-primary required-section"
-                                                    id="rowAdder" onclick="AddResolutionDetalisRaw()"
-                                                    {{ $active }} disabled>Add
-                                                    More</button>
-                                            @else
-                                                @if ($value->votes->count() < 1)
-                                                    <button type="button"
-                                                        class="btn btn-danger required-section reolution-delete-btn"
-                                                        {{ $active }}>Delete</button>
-                                                @endif
-                                            @endif
-
                                         </div>
                                         <br>
 
@@ -428,37 +442,42 @@
                             @else
                                 <div class="row file-wrapper">
 
-                                    <div class="col-6 mb-2">
+                                    <div class="col-4 mb-2">
                                         <select class="form-control required-section" name="resolution[0][option_type]"
                                             disabled>
                                             <option value="radio">Radio</option>
                                             <option value="checkbox">Checkbox</option>
                                         </select>
                                     </div>
-                                    <div class="col-3 mb-2">
+                                    <div class="col-2 mb-2">
                                         <input class="form-control required-section" type="integer" min="1"
-                                            name="resolution[0][min]" placeholder="Minimum checkable" required disabled>
+                                            name="resolution[0][min]" placeholder="Min" required disabled>
                                     </div>
-                                    <div class="col-3 mb-2">
+                                    <div class="col-2 mb-2">
                                         <input class="form-control required-section" type="integer" min="1"
-                                            name="resolution[0][max]" placeholder="Maximum checkable" required disabled>
+                                            name="resolution[0][max]" placeholder="Max" required disabled>
+                                    </div>
+                                    <div class="col-2 mb-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input required-section" type="checkbox" 
+                                                name="resolution[0][skip]" value="1" disabled>
+                                            <label class="form-check-label">Skip</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-2 mb-2">
+                                        <button type="button" class="btn btn-primary required-section btn-sm" id="rowAdder"
+                                            onclick="AddResolutionDetalisRaw()" {{ $active }} disabled>Add</button>
                                     </div>
                                     <div class="col-6">
                                         <textarea class="resolution_description required-section" cols="60" rows="10" disabled
                                             name="resolution[0][description]" {{ $active }} required></textarea>
                                     </div>
-                                    <div class="col-4">
+                                    <div class="col-6">
                                         <input type="file" class="custom-file-input required-section" disabled
                                             name="resolution[0][resolution_files]" onchange="fileChange(this)"
                                             {{ $active }}>
                                         <label class="custom-file-label">{{ 'Choose file' }}</label>
                                         <br>
-
-                                    </div>
-                                    <div class="col-2">
-                                        <button type="button" class="btn btn-primary required-section" id="rowAdder"
-                                            onclick="AddResolutionDetalisRaw()" {{ $active }} disabled>Add
-                                            More</button>
                                     </div>
                                     <br>
                                     <div class="col-12">

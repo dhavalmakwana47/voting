@@ -137,6 +137,14 @@ class VotingCheck extends Command
             ]);
 
             foreach ($resolution->members->where('email_sent', 'N') as $member) {
+
+
+                if (isset($member->sent_date) && $member->reason != 'Delivery') {
+                    $member->update([
+                        'email_sent' => 'Y',
+                    ]);
+                    continue;
+                }
                 // log::info("get voter data where email_sent N resolution_id =");
                 $data = [];
                 $data['member'] = $member;

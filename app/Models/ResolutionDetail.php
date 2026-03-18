@@ -17,6 +17,7 @@ class ResolutionDetail extends Model
         'description',
         'file_name',
         'option_type',
+        'skip',
         'index',
         'min',
         'max'

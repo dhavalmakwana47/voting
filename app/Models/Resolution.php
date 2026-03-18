@@ -25,6 +25,7 @@ class Resolution extends Model
         'is_updated',
         'is_modifiable',
         'comment_mode',
+        'voting_otp',
         'meeting_details'
     ];
 

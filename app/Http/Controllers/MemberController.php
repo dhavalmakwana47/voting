@@ -707,4 +707,44 @@ class MemberController extends Controller
 
         return redirect()->route('member.voting_list')->with('status', 'Password changed successfully!');
     }
+
+    public function sendVotingOtp(Request $request)
+    {
+        try {
+            $member = Member::find($request->member_id);
+            if (!$member) {
+                return response()->json(['success' => false, 'message' => 'Member not found']);
+            }
+
+            $otp = $this->generateOTP();
+            $member->update(['voting_otp' => $otp]);
+
+            $mailData = [
+                'blade' => 'emails.otp',
+                'otp' => $otp,
+                'subject' => 'Voting OTP Verification'
+            ];
+
+            Mail::to($member->email)->send(new VoterEmail($mailData));
+
+            return response()->json(['success' => true, 'message' => 'OTP sent successfully']);
+        } catch (Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to send OTP']);
+        }
+    }
+
+    public function verifyVotingOtp(Request $request)
+    {
+        $member = Member::find($request->member_id);
+        if (!$member) {
+            return response()->json(['success' => false, 'message' => 'Member not found']);
+        }
+
+        if ($member->voting_otp == $request->otp) {
+            $member->update(['voting_otp' => null]); // Clear OTP after verification
+            return response()->json(['success' => true, 'message' => 'OTP verified successfully']);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Invalid OTP']);
+    }
 }

@@ -1,5 +1,15 @@
 @php
     $isUpdateMode = true;
+    // Check if all mandatory items have been voted on
+    foreach ($resolution->resolution_details()->orderBy('index')->get() as $detail) {
+        if (!$detail->skip) {
+            $hasVote = $detail->option_votes()->where('member_id', $member->id)->exists();
+            if (!$hasVote) {
+                $isUpdateMode = false;
+                break;
+            }
+        }
+    }
 @endphp
 @extends('app.member.layout')
 @section('header-script')
@@ -20,6 +30,11 @@
     .checkbox-error .checkbox-limit-info {
         color: red;
         font-weight: bold;
+    }
+    #otp-input {
+        text-align: center;
+        font-size: 18px;
+        letter-spacing: 2px;
     }
     </style>
 @endsection
@@ -58,6 +73,31 @@
         <!-- /.modal-dialog -->
     </div>
 
+    <!-- OTP Modal -->
+    <div class="modal fade" id="otp-modal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">OTP Verification</h4>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>An OTP has been sent to your email. Please enter it below:</p>
+                    <div class="form-group">
+                        <input type="text" class="form-control" id="otp-input" placeholder="Enter OTP" maxlength="6">
+                    </div>
+                    <div id="otp-error" class="text-danger" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="verify-otp">Verify & Submit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <section class="content">
         <div class="container-fluid">
             <div class="row">
@@ -93,7 +133,7 @@
                             </div>
                             <div class="col-md-3"><span
                                     id="totalVotingCount">{{ count($member->option_votes) ? count($member->option_votes) : 0 }}</span>
-                                <span>/{{ $resolution->resolution_details->count() }}</span>
+                                <span>/{{ $resolution->resolution_details->where('skip', 0)->count() }}</span>
                             </div>
                         </div>
                         <form action="{{ route('option_vote.store') }}" method="POST" id="voting_form">
@@ -119,7 +159,7 @@
                                     <tbody>
                                         @foreach ($resolution->resolution_details()->orderBy('index')->get() as $row)
                                             <tr>
-                                                <td>{{ $loop->index + 1 }}</td>
+                                                <td>{{ $loop->index + 1 }}@if($row->skip)<br><span class="badge badge-info">Optional</span>@endif</td>
                                                 <td>{!! nl2br(e($row->description)) !!}<br>
                                                     <a href="{{ route('memberresolutiondetails.download', Crypt::encrypt($row->id)) }}"
                                                         class="linkId">View Information</a>
@@ -137,9 +177,6 @@
                                                                 ->toArray()
                                                             : [];
 
-                                                        if (count($selectedOptionValue) < 1) {
-                                                            $isUpdateMode = false;
-                                                        }
                                                         $voteedDetails = $row
                                                             ->option_votes()
                                                             ->where('member_id', $member->id)
@@ -158,16 +195,19 @@
                                                     @foreach ($row->labels as $label)
                                                         <div class="radio radio-danger block">
                                                             <input type="{{ $row->option_type }}"
-                                                                class="voting_input voting_input_{{ $row->id }}"
+                                                                class="voting_input voting_input_{{ $row->id }} {{ $row->skip ? 'optional-vote' : 'mandatory-vote' }}"
                                                                 name="resolution_choice[{{ $row->id }}]{{ $row->option_type == 'checkbox' ? '[]' : '' }}"
                                                                 value="{{ $label->id }}"
                                                                 {{ in_array($label->id, $selectedOptionValue) ? 'checked' : '' }}
                                                                 data-min="{{ $row->min }}"
-                                                                data-max="{{ $row->max }}">
+                                                                data-max="{{ $row->max }}"
+                                                                data-skip="{{ $row->skip ? '1' : '0' }}">
                                                             <label>{{ $label->label }}</label>
                                                         </div>
                                                     @endforeach
-                            </div>
+                                                    @if ($row->option_type == 'checkbox')
+                                                        </div>
+                                                    @endif
 
 
                             </td>
@@ -227,10 +267,51 @@
                     if ($(this).next().next().is("img")) {
                         $(this).next().next().hide();
                     }
+                } else {
+                    $(this).attr("disabled", true);
                 }
-
             });
         @endif
+    </script>
+    <script>
+        // Override submit form logic for OTP
+        $(document).ready(function() {
+            const votingOtp = {{ $resolution->voting_otp ? 'true' : 'false' }};
+            
+            // Mark that this button has a custom handler
+            $("#submitForm").data('custom-handler', true);
+            
+            // Remove all existing click handlers and add new one
+            $("#submitForm").off('click').on("click", function (e) {
+                e.preventDefault(); // Prevent default form submission
+                
+                if (votingOtp) {
+                    // Send OTP first
+                    $.ajax({
+                        url: '/member/send-voting-otp',
+                        method: 'POST',
+                        data: {
+                            _token: $('meta[name="csrf-token"]').attr('content'),
+                            member_id: {{ $member_id }}
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                $('#otp-modal').modal('show');
+                            } else {
+                                createMessage(response.message || 'Failed to send OTP', 'error');
+                            }
+                        },
+                        error: function() {
+                            createMessage('Error sending OTP', 'error');
+                        }
+                    });
+                } else {
+                    // Direct submit without OTP
+                    $(this).attr("disabled", true);
+                    $("#voting_form").submit();
+                }
+            });
+        });
     </script>
     <script src="{{ asset('custom\member\js\option_voting.js') }}"></script>
 @endsection

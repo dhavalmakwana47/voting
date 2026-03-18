@@ -86,7 +86,7 @@ class OptionVotingController extends Controller
             'member_file' => $filename,
             'is_modifiable' => $request->has('is_modifiable') ? 1 : 0,
             'comment_mode' => $request->has('comment_mode') ? 1 : 0,
-
+            'voting_otp' => $request->has('voting_otp') ? 1 : 0,
         ]);
 
 
@@ -127,6 +127,7 @@ class OptionVotingController extends Controller
                 'option_type' => $optionType,
                 'min' => $min,
                 'max' => $max,
+                'skip' => isset($resolutionData['skip']) ? 1 : 0,
                 'file_name' => $resFilename,
                 'add_by' => auth()->user()->id,
                 'index' => $index + 1
@@ -205,11 +206,15 @@ class OptionVotingController extends Controller
             $validator = Validator::make($request->all(), [
                 'end_date' => 'required|date_format:d-m-Y g:i:A|after:start_date',
             ]);
+
             $endDate = Carbon::createFromFormat('d-m-Y g:i:A', $request->end_date)->format('Y-m-d H:i:s');
+
             $validator->validate();
             $resolution->update([
                 'end_date' => $endDate
             ]);
+            DB::commit(); // ✅ Commit changes
+
             return redirect()->route('voting.index')->with('status', 'Resolution updated successfully');
         }
 
@@ -286,6 +291,7 @@ class OptionVotingController extends Controller
                 'is_active' => $request->has('is_active') && auth()->user()->type == "0" ? 1 : 0,
                 'is_modifiable' => $request->has('is_modifiable') ? 1 : 0,
                 'comment_mode' => $request->has('comment_mode') ? 1 : 0,
+                'voting_otp' => $request->has('voting_otp') ? 1 : 0,
                 'sentemail_approval' => 'P',
                 'sentemail_reportuser' => 'N',
                 'is_updated' => 1
@@ -339,6 +345,7 @@ class OptionVotingController extends Controller
                         'option_type' => $optionType,
                         'min' => $min,
                         'max' => $max,
+                        'skip' => isset($resolutionData['skip']) ? 1 : 0,
                         'index' => $index + 1,
                         'file_name' => $resFilename,
                     ]);
@@ -394,6 +401,7 @@ class OptionVotingController extends Controller
                         'option_type' => $optionType,
                         'min' => $min,
                         'max' => $max,
+                        'skip' => isset($resolutionData['skip']) ? 1 : 0,
                         'file_name' => $resFilename,
                         'add_by' => auth()->user()->id,
                         'index' => $index + 1

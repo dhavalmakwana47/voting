@@ -19,6 +19,6 @@ class PermissionCheck
         if (isset($user) && $user->type == 0) {
             return $next($request);
         }
-        return redirect()->route('voting');
+        return redirect()->route('home');
     }
 }

@@ -86,16 +86,13 @@ class VoteController extends Controller
                     }
                 })
                 ->orderColumn('vote_status', function ($query, $order) use  ($request) {
-                    $query->leftJoin('votes', function($join) use ($request) {
-                              $join->on('members.id', '=', 'votes.member_id')
-                                   ->where('votes.resolution_id', $request->resolution_id);
-                          })
-                          ->leftJoin('optinon_votings', function($join) use ($request) {
-                              $join->on('members.id', '=', 'optinon_votings.member_id')
-                                   ->where('optinon_votings.resolution_id', $request->resolution_id);
-                          })
-                          ->orderByRaw('CASE WHEN votes.id IS NOT NULL OR optinon_votings.id IS NOT NULL THEN 0 ELSE 1 END ' . $order)
-                          ->select('members.*');
+                    $query->orderByRaw('(
+                        CASE WHEN EXISTS(
+                            SELECT 1 FROM votes WHERE votes.member_id = members.id AND votes.resolution_id = ?
+                        ) OR EXISTS(
+                            SELECT 1 FROM optinon_votings WHERE optinon_votings.member_id = members.id AND optinon_votings.resolution_id = ?
+                        ) THEN 0 ELSE 1 END
+                    ) ' . $order, [$request->resolution_id, $request->resolution_id]);
                 })
                 ->rawColumns(['action'])
                 ->escapeColumns([])

@@ -145,6 +145,8 @@ Route::group(['middleware' => 'memberlogin'], function () {
     Route::post('voter/change-password', [MemberController::class, 'update_password'])->name('member.update_password')->middleware(['memberlogin']);
 
     Route::post('option-vote/store', [OptionVoteController::class, 'store'])->name('option_vote.store')->middleware(['memberlogin']);
+    Route::post('member/send-voting-otp', [MemberController::class, 'sendVotingOtp'])->name('member.send_voting_otp')->middleware(['memberlogin']);
+    Route::post('member/verify-voting-otp', [MemberController::class, 'verifyVotingOtp'])->name('member.verify_voting_otp')->middleware(['memberlogin']);
 
 });
 Route::get('voterresolutionsdetails/download/{id}', [ResolutionController::class, 'resolutionDetailsFile'])->name('memberresolutiondetails.download');

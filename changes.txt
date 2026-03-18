@@ -1,7 +1,4 @@
-app\Http\Controllers\OptionVotingController.php
 app\Http\Controllers\VotingReportController.php
-app\Http\Controllers\MemberController.php
-app\Http\Controllers\VoteController.php
 
 
 

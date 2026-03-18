@@ -9,6 +9,7 @@ use App\Models\Resolution;
 use App\Models\ResolutionDetail;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class OptionVoteController extends Controller
@@ -29,7 +30,23 @@ class OptionVoteController extends Controller
                 $isNewVote = false;
                 $resolution_choice_arr = $request->resolution_choice;
                 $commentArr = $request->instr_comment;
-                foreach ($resolution_choice_arr as $res_detail_id => $option_id) {
+                
+                // Get all resolution details for this resolution
+                $allResolutionDetails = ResolutionDetail::where('resolution_id', $member->resolution_id)->pluck('id')->toArray();
+                
+                // Get resolution details that are being voted on
+                $votedResolutionDetails = $resolution_choice_arr ? array_keys($resolution_choice_arr) : [];
+                
+                // Delete votes for resolution details that are no longer being voted on
+                $toDeleteResolutionDetails = array_diff($allResolutionDetails, $votedResolutionDetails);
+                if (!empty($toDeleteResolutionDetails)) {
+                    OptinonVoting::where('member_id', $member->id)
+                        ->whereIn('resolution_details_id', $toDeleteResolutionDetails)
+                        ->delete();
+                }
+                
+                if ($resolution_choice_arr) {
+                    foreach ($resolution_choice_arr as $res_detail_id => $option_id) {
                     $resDetails = ResolutionDetail::find($res_detail_id);
                     if ($resDetails->option_type == 'radio') {
                         $vote = $resDetails->option_votes()
@@ -99,6 +116,7 @@ class OptionVoteController extends Controller
                         }
                     }
                 }
+                }
 
                 $data = $logData = [];
                 $logData['member_id'] = $member->id;
@@ -116,6 +134,7 @@ class OptionVoteController extends Controller
             }
             return redirect()->route('member.voting_list')->with('status', 'Congratulations! Your Vote Has Been Successfully Submitted.');
         } catch (\Exception $e) {
+            Log::error('OptionVoteController@store error: ' . $e->getMessage());
             // Handle the exception and redirect back with an error message
             return redirect()->back()->with('error', 'something went wrong.');
         }
