@@ -441,3 +441,9 @@ Stack trace:
 [2026-01-03 11:22:38] local.ERROR: Failed to set MySQL timeout settings: SQLSTATE[HY000] [2006] MySQL server has gone away  
 [2026-01-03 11:23:13] local.ERROR: Failed to set MySQL timeout settings: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it  
 [2026-01-03 11:23:13] local.ERROR: Failed to set MySQL timeout settings: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it  
+[2026-03-18 22:42:34] local.ERROR: Failed to set MySQL timeout settings: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it  
+[2026-03-18 22:42:34] local.ERROR: Failed to set MySQL timeout settings: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it  
+[2026-03-18 22:42:34] local.ERROR: Failed to set MySQL timeout settings: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it  
+[2026-03-18 22:42:34] local.ERROR: Failed to set MySQL timeout settings: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it  
+[2026-03-18 22:42:39] local.ERROR: Failed to set MySQL timeout settings: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it  
+[2026-03-18 22:42:39] local.ERROR: Failed to set MySQL timeout settings: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it  

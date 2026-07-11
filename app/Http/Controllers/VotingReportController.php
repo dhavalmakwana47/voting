@@ -184,7 +184,15 @@ class VotingReportController extends Controller
             $data = $detailsArr = [];
             $id = $request->id;
             $type = $request->type;
-            $resolution = Resolution::find($id);
+            $authUser = auth()->user();
+            if ($authUser->type == '0') {
+                $resolution = Resolution::find($id);
+            } else {
+                $resolution = Resolution::where('user_id',$authUser->id)->where('id', $id)->first();
+            }
+            if (!$resolution) {
+                return redirect()->route('votingreport.index')->with('error', 'Voting not found.');
+            }
 
             $user = auth()->user();
             $logData['user_id'] = $user->id;
@@ -376,7 +384,15 @@ class VotingReportController extends Controller
             $data = $detailsArr = [];
             $id = $request->id;
             $type = $request->type;
-            $resolution = Resolution::find($id);
+            $authUser = auth()->user();
+            if ($authUser->type == '0') {
+                $resolution = Resolution::find($id);
+            } else {
+                $resolution = Resolution::where('user_id',$authUser->id)->where('id', $id)->first();
+            }
+            if (!$resolution) {
+                return redirect()->route('votingreport.index')->with('error', 'Voting not found.');
+            }
 
             if ($type == 'pdf') {
                 $data['resolution'] = $resolution;;
@@ -486,10 +502,14 @@ class VotingReportController extends Controller
     }
     public function new_report($id)
     {
-        $resolution = Resolution::with('company', 'resolution_details', 'user')->find($id);
-
+        $authUser = auth()->user();
+        if ($authUser->type == '0') {
+            $resolution = Resolution::with('company', 'resolution_details', 'user')->find($id);
+        } else {
+            $resolution = Resolution::with('company', 'resolution_details', 'user')->where('user_id',$authUser->id)->where('id', $id)->first();
+        }
         if (!$resolution) {
-            return redirect()->back()->with('error', 'Voting not found.');
+            return redirect()->route('votingreport.index')->with('error', 'Voting not found.');
         }
         $data['resolution'] = $resolution;
         $imagePath = public_path('homepage/assets/img/logo.png');
@@ -523,11 +543,16 @@ class VotingReportController extends Controller
     }
     public function new_report_view($id)
     {
-        $resolution = Resolution::with('company', 'resolution_details', 'user')->find($id);
-
-        if (!$resolution) {
-            return redirect()->back()->with('error', 'Voting not found.');
+        $authUser = auth()->user();
+        if ($authUser->type == '0') {
+            $resolution = Resolution::with('company', 'resolution_details', 'user')->find($id);
+        } else {
+            $resolution = Resolution::with('company', 'resolution_details', 'user')->where('user_id',$authUser->id)->where('id', $id)->first();
         }
+        if (!isset($resolution)) {
+            return redirect()->route('votingreport.index')->with('error', 'Voting not found.');
+        }
+
         $data['resolution'] = $resolution;
         $imagePath = public_path('homepage/assets/img/logo.png');
         $imageData = base64_encode(file_get_contents($imagePath));
