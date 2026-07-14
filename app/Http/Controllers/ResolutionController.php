@@ -168,7 +168,7 @@ class ResolutionController extends Controller
 
 
         $company = Company::find($request->company);
-        $replaceChars = [' ', '-', '&', '.','/']; // Characters you want to replace
+        $replaceChars = [' ', '-', '&', '.', '/']; // Characters you want to replace
         $prefix = substr(str_replace($replaceChars, '_', $company->name), 0, 3);
         $resolution = Resolution::create([
             'user_id' => isset($request->user_id) ? $request->user_id : auth()->user()->id,
@@ -298,7 +298,7 @@ class ResolutionController extends Controller
         try {
 
             $company = Company::find($request->company);
-            $replaceChars = [' ', '-', '&', '.','/']; // Characters you want to replace
+            $replaceChars = [' ', '-', '&', '.', '/']; // Characters you want to replace
             $prefix = substr(str_replace($replaceChars, '_', $company->name), 0, 3);
 
             if ($request->hasFile('member_file')) {
@@ -517,6 +517,7 @@ class ResolutionController extends Controller
 
         $data = Excel::toCollection(new ConvertToArray(), $file);
         $data = $data->toArray()[0];
+
         $arrfield = ['name', 'share', 'email', 'phone'];
         $uplodedFieldArr = [];
 
@@ -535,16 +536,16 @@ class ResolutionController extends Controller
         $rules = [
             '*.name' => 'required|string|max:255',
             '*.email' => 'required|email',
-            '*.share' => 'required|max:25',
-            // Add more rules as needed
+            '*.share' => ['required', 'regex:/^\d+(\.\d+)?$/'],
         ];
 
-
-        // Custom error messages
         $messages = [
             '*.name.required' => 'The name field is required.',
+            '*.name.string'   => 'The name must be a string.',
             '*.email.required' => 'The email field is required.',
-            '*.share.required' => 'The phone field is required.'
+            '*.email.email'   => 'The email must be a valid email address.',
+            '*.share.required' => 'The share field is required.',
+            '*.share.regex'   => 'The share must be a valid number.',
         ];
 
         $validator = Validator::make($data, $rules, $messages);

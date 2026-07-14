@@ -21,3 +21,4 @@ yarn-error.log
 /storage/framework/sessions/
 /storage/framework/views/
 /storage/framework/cache/data/
+public/uploads/
