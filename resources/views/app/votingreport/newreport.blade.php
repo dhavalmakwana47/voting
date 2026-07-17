@@ -7,6 +7,55 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Voting Details</title>
 
+    @if(!isset($is_pdf) || !$is_pdf)
+        <!-- Bootstrap / AdminLTE & Toastr Styles for Viewer -->
+        <link rel="stylesheet" href="{{ asset('dist/css/adminlte.min.css') }}">
+        <link rel="stylesheet" href="{{ asset('plugins/fontawesome-free/css/all.min.css') }}">
+        <link href="{{ asset('customdownload/css/toastr.min.css') }}" rel="stylesheet">
+        <style>
+            body {
+                padding-top: 80px !important;
+                background-color: #f4f6f9 !important;
+            }
+            .content {
+                box-shadow: 0 4px 15px rgba(0,0,0,0.08) !important;
+                background-color: white !important;
+                margin-top: 20px !important;
+                margin-bottom: 40px !important;
+                border-radius: 8px !important;
+            }
+            .header-bar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 60px;
+                background: rgba(33, 37, 41, 0.95);
+                backdrop-filter: blur(5px);
+                z-index: 9999;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0 30px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                color: white;
+            }
+            .header-title {
+                font-size: 16px;
+                font-weight: 600;
+                margin: 0;
+                color: #f8f9fa;
+            }
+            .action-btn {
+                border-radius: 20px;
+                padding: 6px 18px;
+                font-weight: 500;
+                font-size: 13px;
+                transition: all 0.2s ease;
+            }
+        </style>
+    @endif
+
     <style>
         body {
             font-family: 'DejaVu Sans', sans-serif;
@@ -123,6 +172,22 @@
 </head>
 
 <body>
+
+    @if(!isset($is_pdf) || !$is_pdf)
+        <div class="header-bar">
+            <h5 class="header-title">
+                <i class="fas fa-file-alt mr-2 text-info"></i> Voting Report Viewer
+            </h5>
+            <div>
+                <a href="{{ route('votingreport.index') }}" class="btn btn-outline-light action-btn mr-2">
+                    <i class="fas fa-arrow-left mr-1"></i> Back to List
+                </a>
+                <button id="download-report-btn" class="btn btn-info action-btn text-white">
+                    <i class="fas fa-cloud-download-alt mr-1"></i> Download PDF
+                </button>
+            </div>
+        </div>
+    @endif
 
     <div class="content">
 
@@ -257,6 +322,53 @@
             </div>
         @endforeach
     </div>
+
+    @if(!isset($is_pdf) || !$is_pdf)
+        <!-- jQuery, Bootstrap & Toastr JS -->
+        <script src="{{ asset('plugins/jquery/jquery.min.js') }}"></script>
+        <script src="{{ asset('plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+        <script src="{{ asset('customdownload/js/toastr.js') }}"></script>
+        <script>
+            $(document).ready(function() {
+                toastr.options = {
+                    "closeButton": true,
+                    "progressBar": true,
+                    "positionClass": "toast-top-center",
+                    "timeOut": "5000"
+                };
+
+                $('#download-report-btn').click(function(e) {
+                    e.preventDefault();
+                    var btn = $(this);
+                    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Queuing...');
+
+                    $.ajax({
+                        url: "{{ route('votingreport.request_download') }}",
+                        type: "POST",
+                        data: {
+                            _token: "{{ csrf_token() }}",
+                            resolution_id: "{{ $resolution->id }}",
+                            format: "new_report"
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                toastr.success(response.message);
+                            } else {
+                                toastr.error("Failed to request download.");
+                            }
+                        },
+                        error: function(xhr) {
+                            var msg = xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : "Failed to queue download.";
+                            toastr.error(msg);
+                        },
+                        complete: function() {
+                            btn.prop('disabled', false).html('<i class="fas fa-cloud-download-alt mr-1"></i> Download PDF');
+                        }
+                    });
+                });
+            });
+        </script>
+    @endif
 
 </body>
 

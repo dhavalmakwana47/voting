@@ -14,6 +14,9 @@ use Maatwebsite\Excel\Facades\Excel;
 use Yajra\DataTables\DataTables;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use App\Models\ReportDownload;
+use App\Jobs\GenerateReportJob;
+use Illuminate\Support\Facades\Storage;
 
 class VotingReportController extends Controller
 {
@@ -40,20 +43,14 @@ class VotingReportController extends Controller
             return DataTables::of($data)
                 ->addIndexColumn()
                 ->addColumn('download', function ($row) {
-                    if ($row->evsn_type == '2') {
-                        $route = route('option_report.get_report', ['type' => 'csv', 'id' => $row->id]);
-                    } else {
-                        $route = route('votingreport.get_report', ['type' => 'csv', 'id' => $row->id]);
-                    }
-                    $btn = ' <a href="' . $route . '"  class="btn btn-primary" >Excel</a>';
+                    $btn = '<button type="button" class="btn btn-primary btn-sm request-download-btn" data-id="' . $row->id . '" data-format="excel"><i class="fas fa-file-excel mr-1"></i>Excel</button>';
                     return $btn;
                 })
                 ->addColumn('new_report', function ($row) {
                     if ($row->evsn_type == '2') {
                         $btn = '';
                     } else {
-                        $route = route('votingreport.new_report', ['id' => $row->id]);
-                        $btn = ' <a href="' . $route . '"  class="btn btn-success" >PDF</a>';
+                        $btn = '<button type="button" class="btn btn-success btn-sm request-download-btn" data-id="' . $row->id . '" data-format="new_report"><i class="fas fa-file-pdf mr-1"></i>PDF</button>';
                     }
                     return $btn;
                 })
@@ -62,26 +59,16 @@ class VotingReportController extends Controller
                         $btn = '';
                     } else {
                         $route = route('votingreport.new_report_view', ['id' => $row->id]);
-                        $btn = ' <a href="' . $route . '"  class="btn btn-info" >View</a>';
+                        $btn = ' <a href="' . $route . '"  class="btn btn-info btn-sm" ><i class="fas fa-eye mr-1"></i>View</a>';
                     }
                     return $btn;
                 })
                 ->addColumn('pdf', function ($row) {
-                    if ($row->evsn_type == '2') {
-                        $route = route('option_report.get_report', ['type' => 'pdf', 'id' => $row->id]);
-                    } else {
-                        $route = route('votingreport.get_report', ['type' => 'pdf', 'id' => $row->id]);
-                    }
-                    $btn = ' <a href="' . $route . '"  class="btn btn-success" >PDF</a>';
+                    $btn = '<button type="button" class="btn btn-success btn-sm request-download-btn" data-id="' . $row->id . '" data-format="pdf"><i class="fas fa-file-pdf mr-1"></i>PDF</button>';
                     return $btn;
                 })
                 ->addColumn('reportpdf', function ($row) {
-                    if ($row->evsn_type == '2') {
-                        $route = route('option_report.get_report', ['type' => 'pdf', 'id' => $row->id]);
-                    } else {
-                        $route = route('votingreport.get_report', ['type' => 'reportpdf', 'id' => $row->id]);
-                    }
-                    $btn = ' <a href="' . $route . '"  class="btn btn-success" >PDF</a>';
+                    $btn = '<button type="button" class="btn btn-success btn-sm request-download-btn" data-id="' . $row->id . '" data-format="reportpdf"><i class="fas fa-percent mr-1"></i>Report</button>';
                     return $btn;
                 })
                 ->addColumn('start_date', function ($row) {
@@ -512,6 +499,7 @@ class VotingReportController extends Controller
             return redirect()->route('votingreport.index')->with('error', 'Voting not found.');
         }
         $data['resolution'] = $resolution;
+        $data['is_pdf'] = true;
         $imagePath = public_path('homepage/assets/img/logo.png');
         $imageData = base64_encode(file_get_contents($imagePath));
         $imageMimeType = mime_content_type($imagePath);
@@ -554,6 +542,7 @@ class VotingReportController extends Controller
         }
 
         $data['resolution'] = $resolution;
+        $data['is_pdf'] = false;
         $imagePath = public_path('homepage/assets/img/logo.png');
         $imageData = base64_encode(file_get_contents($imagePath));
         $imageMimeType = mime_content_type($imagePath);
@@ -582,5 +571,150 @@ class VotingReportController extends Controller
 
 
         return view('app.votingreport.newreport', $data);
+    }
+
+    /**
+     * Request a report download in the background.
+     */
+    public function requestDownload(Request $request)
+    {
+        $request->validate([
+            'resolution_id' => 'required|exists:resolutions,id',
+            'format' => 'required|in:excel,pdf,reportpdf,new_report'
+        ]);
+
+        $id = $request->resolution_id;
+        $format = $request->format;
+        $authUser = auth()->user();
+
+        // Access Control
+        if ($authUser->type == '0') {
+            $resolution = Resolution::with('company')->find($id);
+        } else {
+            $resolution = Resolution::with('company')->where('user_id', $authUser->id)->where('id', $id)->first();
+        }
+
+        if (!$resolution) {
+            return response()->json(['error' => 'Voting report not found or unauthorized.'], 403);
+        }
+
+        // Format filename: replace spaces/special chars with underscores
+        $companyName = preg_replace('/[^A-Za-z0-9\-]/', '_', $resolution->company->name);
+        $ext = $format === 'excel' ? 'xlsx' : 'pdf';
+        $reportName = $companyName . '_' . $format . 'report_' . $resolution->id . '_' . time() . '.' . $ext;
+
+        // Log action
+        $logData = [
+            'user_id' => $authUser->id,
+            'resolution_id' => $id,
+            'action' => "Requested async report download: ID {$id} (format: {$format})."
+        ];
+        addUserAction($logData);
+
+        // Create download record
+        $downloadRequest = ReportDownload::create([
+            'user_id' => $authUser->id,
+            'resolution_id' => $id,
+            'report_type' => $format,
+            'report_name' => $reportName,
+            'status' => 'queued',
+            'progress' => 0
+        ]);
+
+        // Dispatch background queue job
+        dispatch(new GenerateReportJob($downloadRequest));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Your download request has been received. The report is being generated in the background. You can continue using the application and check the Downloads section for its status.',
+            'download' => $downloadRequest
+        ]);
+    }
+
+    /**
+     * Get all report downloads for the current user.
+     */
+    public function getDownloads()
+    {
+        $authUser = auth()->user();
+        $downloads = ReportDownload::with('resolution.company')
+            ->where('user_id', $authUser->id)
+            ->orderBy('id', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'downloads' => $downloads->map(function($download) {
+                return [
+                    'id' => $download->id,
+                    'report_name' => $download->report_name,
+                    'report_type' => strtoupper($download->report_type),
+                    'company_name' => $download->resolution->company->name ?? 'N/A',
+                    'resolution_id' => $download->resolution_id,
+                    'requested_at' => $download->created_at->format('d-M-Y g:i A'),
+                    'status' => ucfirst($download->status),
+                    'progress' => $download->progress,
+                    'download_url' => route('votingreport.download_file', ['id' => $download->id]),
+                    'error_message' => $download->error_message ? strtok($download->error_message, "\n") : null,
+                ];
+            })
+        ]);
+    }
+
+    /**
+     * Download the completed report file securely.
+     */
+    public function downloadFile($id)
+    {
+        $authUser = auth()->user();
+        $download = ReportDownload::find($id);
+
+        if (!$download) {
+            abort(404, 'Download record not found.');
+        }
+
+        if ($download->user_id !== $authUser->id && $authUser->type !== '0') {
+            abort(403, 'Unauthorized access.');
+        }
+
+        if ($download->status !== 'completed' || !$download->file_path || !Storage::disk('public')->exists($download->file_path)) {
+            abort(404, 'File not ready or does not exist.');
+        }
+
+        $fullPath = Storage::disk('public')->path($download->file_path);
+        $response = response()->download($fullPath, $download->report_name)->deleteFileAfterSend(true);
+        $download->delete();
+        return $response;
+    }
+
+    /**
+     * Retry a failed report download.
+     */
+    public function retryDownload($id)
+    {
+        $authUser = auth()->user();
+        $download = ReportDownload::find($id);
+
+        if (!$download) {
+            return response()->json(['error' => 'Download record not found.'], 404);
+        }
+
+        if ($download->user_id !== $authUser->id && $authUser->type !== '0') {
+            return response()->json(['error' => 'Unauthorized action.'], 403);
+        }
+
+        $download->update([
+            'status' => 'queued',
+            'progress' => 0,
+            'error_message' => null
+        ]);
+
+        dispatch(new GenerateReportJob($download));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'The report is being regenerated in the background. You can check the Downloads section for its status.',
+            'download' => $download
+        ]);
     }
 }

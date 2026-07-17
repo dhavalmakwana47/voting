@@ -112,6 +112,10 @@ Route::group(['middleware' => ['auth', 'userstatus']], function () {
     Route::get('votingreport-option/report/{type}/{id}', [VotingReportController::class, 'option_report'])->name('option_report.get_report');
     Route::get('votingreport/new-report/{id}', [VotingReportController::class, 'new_report'])->name('votingreport.new_report');
     Route::get('votingreport/new-report-view/{id}', [VotingReportController::class, 'new_report_view'])->name('votingreport.new_report_view');
+    Route::post('votingreport/download-request', [VotingReportController::class, 'requestDownload'])->name('votingreport.request_download');
+    Route::get('votingreport/downloads', [VotingReportController::class, 'getDownloads'])->name('votingreport.get_downloads');
+    Route::get('votingreport/download/{id}/file', [VotingReportController::class, 'downloadFile'])->name('votingreport.download_file');
+    Route::post('votingreport/download/{id}/retry', [VotingReportController::class, 'retryDownload'])->name('votingreport.retry_download');
 
     /* <============================  The End  ============================> */
 });
