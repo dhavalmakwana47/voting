@@ -8,17 +8,10 @@
     <title>Voting Details</title>
 
     <style>
-        @font-face {
-            font-family: 'NotoSansDevanagari';
-            src: url('{{ storage_path('fonts/NotoSansDevanagari-Regular.ttf') }}') format('truetype');
-            font-weight: normal;
-            font-style: normal;
-        }
-
         body {
-            font-family: 'NotoSansDevanagari', sans-serif;
-            font-size: 14px;
-            line-height: 1.6;
+            font-family: 'DejaVu Sans', sans-serif;
+            font-size: 12px;
+            line-height: 1.5;
             margin: 0;
         }
 
@@ -32,7 +25,7 @@
         .header-left p,
         .header-left span {
             margin: 0;
-            font-size: 15px;
+            font-size: 14px;
 
             padding: 2px 0;
             font-weight: bold;
@@ -82,8 +75,22 @@
         th,
         td {
             border: 1px solid #000;
-            padding: 8px 12px;
+            padding: 6px 10px;
             /*            text-align: center;*/
+            word-wrap: break-word;
+        }
+
+        th {
+            word-break: normal;
+        }
+
+        td {
+            word-break: break-all;
+        }
+
+        .report-table {
+            table-layout: fixed;
+            width: 100%;
         }
 
         th {
@@ -99,6 +106,18 @@
         /* Force new page for each resolution detail except the first one */
         .page-break {
             page-break-before: always;
+        }
+
+        /* Prevent table rows and table headers from splitting across page breaks */
+        thead {
+            display: table-header-group;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        tr {
+            page-break-inside: avoid;
+            break-inside: avoid;
         }
     </style>
 </head>
@@ -146,19 +165,19 @@
             <div class="content">
                 <h3>Voting Details {{ $loop->index + 1 }}</h3>
                 <p>{!! nl2br(e($resolutionDetail->description)) !!}</p>
-                <table width="100%" cellspacing="0" cellpadding="0">
+                <table class="report-table" cellspacing="0" cellpadding="0">
                     <thead>
                         <tr>
-                            <th rowspan="2">Sr. No.</th>
-                            <th rowspan="2">Voter ID</th>
-                            <th rowspan="2">Name of Voter</th>
-                            <th colspan="4" width="20%">% of Voting</th>
+                            <th rowspan="2" width="6%">Sr. No.</th>
+                            <th rowspan="2" width="20%">Voter ID</th>
+                            <th rowspan="2" width="24%">Name of Voter</th>
+                            <th colspan="4" width="50%">% of Voting</th>
                         </tr>
                         <tr>
-                            <th>Agree (Accept)</th>
-                            <th>Disagree (Reject)</th>
-                            <th>Abstain</th>
-                            <th width="10%">Not Voted</th>
+                            <th width="12%">Agree (Accept)</th>
+                            <th width="13%">Disagree (Reject)</th>
+                            <th width="12%">Abstain</th>
+                            <th width="13%">Not Voted</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -208,14 +227,14 @@
                     </tbody>
                 </table>
                 <br>
-                <table>
+                <table class="report-table">
                     <thead>
                         <tr>
-                            <th>Sr No.</th>
-                            <th>Name of Voter / Email ID</th>
+                            <th width="8%">Sr No.</th>
+                            <th width="42%">Name of Voter / Email ID</th>
                             <!-- <th>Email ID</th> -->
-                            <th>Date & Time of Voting</th>
-                            <th>IP ADDRESS</th>
+                            <th width="20%">Date & Time of Voting</th>
+                            <th width="30%">IP ADDRESS</th>
                         </tr>
                     </thead>
                     <tbody>

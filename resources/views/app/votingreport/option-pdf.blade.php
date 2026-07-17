@@ -8,7 +8,7 @@
     <title>Summary Report</title>
     <style>
         body {
-            font-family: 'Times New Roman', Times, serif;
+            font-family: 'DejaVu Sans', sans-serif;
             font-size: 12px;
             margin: 0;
             padding: 20px;
@@ -144,7 +144,7 @@
             $total_numbers_of_members = $totalMembers->count();
         @endphp
         <table border="1" cellpadding="6" cellspacing="0"
-            style="width: 100%; border-collapse: collapse; font-family: sans-serif;">
+            style="width: 100%; border-collapse: collapse; font-family: 'DejaVu Sans', sans-serif;">
             <thead style="background-color: #343a40; color: white;">
                 <tr>
                     <th>Item Number</th>
