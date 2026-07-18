@@ -100,11 +100,11 @@
         </tr>
         <tr>
             <td>Voted Voter:</td>
-            <td>{{ $resolution->votes->count() / $resolution->resolution_details->count() }}</td>
+            <td>{{ isset($totalMembersCount) ? (isset($resolution->votes) ? intval($resolution->votes->count() / (isset($totalResolutionDetailsCount) ? $totalResolutionDetailsCount : $resolution->resolution_details->count())) : 0) : ($resolution->votes->count() / $resolution->resolution_details->count()) }}</td>
         </tr>
         <tr>
             <td>Total Voter:</td>
-            <td>{{ $resolution->members->count() }}</td>
+            <td>{{ isset($totalMembersCount) ? $totalMembersCount : $resolution->members->count() }}</td>
         </tr>
         <tr>
             <td>Voting Start Date and Time:</td>

@@ -95,8 +95,8 @@
                 <td>{{ $resolution->company->name }}</td>
                 <td>{{ $resolution->user->name }}</td>
                 <td>{{ $resolution->id }}</td>
-                <td>{{ $resolution->votes->count() / $resolution->resolution_details->count() }}</td>
-                <td>{{ $resolution->members->count() }}</td>
+                <td>{{ isset($totalMembersCount) ? (isset($resolution->votes) ? intval($resolution->votes->count() / (isset($totalResolutionDetailsCount) ? $totalResolutionDetailsCount : $resolution->resolution_details->count())) : 0) : ($resolution->votes->count() / $resolution->resolution_details->count()) }}</td>
+                <td>{{ isset($totalMembersCount) ? $totalMembersCount : $resolution->members->count() }}</td>
                 <td colspan="17"></td>
             </tr>
             <tr>

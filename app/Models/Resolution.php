@@ -26,7 +26,8 @@ class Resolution extends Model
         'is_modifiable',
         'comment_mode',
         'voting_otp',
-        'meeting_details'
+        'meeting_details',
+        'is_zip'
     ];
 
     public function company()

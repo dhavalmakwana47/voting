@@ -60,7 +60,7 @@ class GenerateReportJob implements ShouldQueue
             $id = $request->resolution_id;
             $format = $request->report_type;
 
-            $resolution = Resolution::with('company', 'resolution_details', 'user')->find($id);
+            $resolution = Resolution::with(['company', 'resolution_details', 'user', 'votes', 'members.res_vote', 'members.vote'])->find($id);
             if (!$resolution) {
                 throw new Exception("Resolution with ID {$id} not found.");
             }
@@ -81,24 +81,35 @@ class GenerateReportJob implements ShouldQueue
                 $request->update(['progress' => 50]);
                 Excel::store(new multisheetExport($id), $filePath, 'public');
             } else {
-                // PDF reports
-                $data = [];
-                $request->update(['progress' => 45]);
+                // PDF reports — partitioned by resolution detail + member chunking
+                $resolutionDetails = $resolution->resolution_details()->orderBy('index')->get();
+                $allMembers = $resolution->members;
+                $memberChunkSize = 500; // Max members per single PDF to avoid Dompdf timeout
+                $pdfFiles = [];
 
-                if ($format === 'pdf' || $format === 'reportpdf') {
+                $request->update(['progress' => 40]);
+
+                $totalDetailsCount = $resolutionDetails->count();
+                if ($totalDetailsCount == 0) { $totalDetailsCount = 1; }
+                $totalMembersCount = $allMembers->count();
+
+                // We need a ZIP if there are multiple details OR members exceed chunk size
+                // OR if is_zip flag is set on the resolution (set after a previous failure)
+                $needsZip = $resolution->is_zip;
+
+                // Helper: build detailsArr for a given collection of resolution details
+                $buildDetailsArr = function ($details) use ($resolution, $allMembers, $id) {
                     $detailsArr = [];
-                    $totalMembers = $resolution->members;
-
-                    foreach ($resolution->resolution_details()->orderBy('index')->get() as $resolutionDetail) {
+                    foreach ($details as $resolutionDetail) {
                         $votedMembers = Member::whereIn('id', $resolutionDetail->votes->pluck('member_id'));
-                        $absent_no_of_voters = Member::where('resolution_id', $id)->whereNotIn('id', $resolutionDetail->votes->pluck('member_id'));
+                        $absent_no_of_voters_q = Member::where('resolution_id', $id)->whereNotIn('id', $resolutionDetail->votes->pluck('member_id'));
 
                         $assentMembers = Member::whereIn('id', $resolutionDetail->votes->where('resolution_choice', 'YES')->pluck('member_id'));
                         $dissentMembers = Member::whereIn('id', $resolutionDetail->votes->where('resolution_choice', 'No')->pluck('member_id'));
                         $abstainMembers = Member::whereIn('id', $resolutionDetail->votes->where('resolution_choice', 'ABSTAIN')->pluck('member_id'));
 
-                        $total_voting_of_share = $totalMembers->sum('share');
-                        $total_numbers_of_members = $totalMembers->count();
+                        $total_voting_of_share = $allMembers->sum('share');
+                        $total_numbers_of_members = $allMembers->count();
 
                         $total_voted_of_share = $votedMembers->sum('share');
                         $total_numbers_of_voters = $votedMembers->count();
@@ -106,7 +117,6 @@ class GenerateReportJob implements ShouldQueue
 
                         $assent_voting_of_share = $assentMembers->sum('share');
                         $assent_no_of_voters = $assentMembers->count();
-
                         if ($resolution->user->user_type != 2) {
                             $assent_percentage = $total_voted_of_share > 0 ? ($assent_voting_of_share * 100) / $total_voted_of_share : 0;
                         } else {
@@ -129,8 +139,8 @@ class GenerateReportJob implements ShouldQueue
                             $abstain_percentage = $total_voting_of_share > 0 ? ($abstain_voting_of_share / $total_voting_of_share) * 100 : 0;
                         }
 
-                        $absent_voting_of_share = $absent_no_of_voters->sum('share');
-                        $absent_no_of_voters = $absent_no_of_voters->count();
+                        $absent_voting_of_share = $absent_no_of_voters_q->sum('share');
+                        $absent_no_of_voters = $absent_no_of_voters_q->count();
                         if ($resolution->user->user_type != 2) {
                             $absent_percentage = $total_voting_of_share > 0 ? ($absent_voting_of_share * 100) / $total_voting_of_share : 0;
                         } else {
@@ -160,49 +170,127 @@ class GenerateReportJob implements ShouldQueue
                             'total_percentage_of_voted' => $total_percentage_of_voted,
                         ];
                     }
+                    return $detailsArr;
+                };
 
+                if (!$needsZip) {
+                    // Small report: single detail + few members — one PDF
+                    $data = [];
                     $data['resolution'] = $resolution;
-                    $data['detailsArr'] = $detailsArr;
-
-                    $request->update(['progress' => 60]);
-
-                    if ($format === 'pdf') {
-                        if ($resolution->evsn_type == '2') {
-                            $data['view'] = 'app.votingreport.option-pdf';
+                    $data['totalMembersCount'] = $totalMembersCount;
+                    $data['totalResolutionDetailsCount'] = $totalDetailsCount;
+                    if ($format === 'pdf' || $format === 'reportpdf') {
+                        $data['detailsArr'] = $buildDetailsArr($resolutionDetails);
+                        $request->update(['progress' => 60]);
+                        if ($format === 'pdf') {
+                            $data['view'] = $resolution->evsn_type == '2' ? 'app.votingreport.option-pdf' : 'app.votingreport.pdf';
+                            $dompdf = $this->generatePDF($data);
                         } else {
-                            $data['view'] = 'app.votingreport.pdf';
+                            $dompdf = $this->generatereportPDF($data);
                         }
-                        $dompdf = $this->generatePDF($data);
-                    } else { // reportpdf
-                        $dompdf = $this->generatereportPDF($data);
+                    } elseif ($format === 'new_report') {
+                        $data['is_pdf'] = true;
+                        $request->update(['progress' => 60]);
+                        $dompdf = $this->generateNewReportPDF($data);
+                    } else {
+                        throw new Exception("Unsupported report format: {$format}");
                     }
-                } elseif ($format === 'new_report') {
-                    $data['resolution'] = $resolution;
-                    $data['is_pdf'] = true;
-                    $request->update(['progress' => 60]);
-                    $dompdf = $this->generateNewReportPDF($data);
+                    $request->update(['progress' => 80]);
+                    Storage::disk('public')->put($filePath, $dompdf->output());
                 } else {
-                    throw new Exception("Unsupported report format: {$format}");
-                }
+                    // Large report: split by detail AND chunk members within each detail
+                    // Pre-calculate total parts for progress tracking
+                    $totalParts = 0;
+                    foreach ($resolutionDetails as $detail) {
+                        $totalParts += max(1, intval(ceil($totalMembersCount / $memberChunkSize)));
+                    }
+                    $partCounter = 0;
 
-                $request->update(['progress' => 80]);
-                $pdfContent = $dompdf->output();
-                Storage::disk('public')->put($filePath, $pdfContent);
+                    foreach ($resolutionDetails as $resolutionDetail) {
+                        $detailsArr = $buildDetailsArr(collect([$resolutionDetail]));
+                        $memberChunks = $allMembers->chunk($memberChunkSize);
+
+                        foreach ($memberChunks as $chunkIndex => $chunkMembers) {
+                            $partCounter++;
+                            $progressPercent = 40 + intval(($partCounter / $totalParts) * 40);
+                            $request->update(['progress' => min($progressPercent, 80)]);
+
+                            // Clone resolution, set this detail only + chunked members
+                            $chunkResolution = clone $resolution;
+                            $chunkResolution->setRelation('resolution_details', collect([$resolutionDetail]));
+                            $chunkResolution->setRelation('members', $chunkMembers);
+
+                            $chunkData = [];
+                            $chunkData['resolution'] = $chunkResolution;
+                            $chunkData['detailsArr'] = $detailsArr;
+                            $chunkData['totalMembersCount'] = $totalMembersCount;
+                            $chunkData['totalResolutionDetailsCount'] = $totalDetailsCount;
+
+                            if ($format === 'pdf' || $format === 'reportpdf') {
+                                if ($format === 'pdf') {
+                                    $chunkData['view'] = $resolution->evsn_type == '2' ? 'app.votingreport.option-pdf' : 'app.votingreport.pdf';
+                                    $dompdf = $this->generatePDF($chunkData);
+                                } else {
+                                    $dompdf = $this->generatereportPDF($chunkData);
+                                }
+                            } elseif ($format === 'new_report') {
+                                $chunkData['is_pdf'] = true;
+                                $dompdf = $this->generateNewReportPDF($chunkData);
+                            }
+
+                            $partName = 'item' . $resolutionDetail->id . '_part' . ($chunkIndex + 1);
+                            $partFileName = str_replace('.pdf', '_' . $partName . '.pdf', $fileName);
+                            $partFilePath = $relativeDir . '/' . $partFileName;
+                            Storage::disk('public')->put($partFilePath, $dompdf->output());
+                            $pdfFiles[] = Storage::disk('public')->path($partFilePath);
+
+                            unset($dompdf); // Free memory
+                        }
+                    }
+
+                    // Create ZIP archive
+                    $zipFileName = str_replace('.pdf', '.zip', $fileName);
+                    $zipFilePath = $relativeDir . '/' . $zipFileName;
+                    $zipPhysicalPath = Storage::disk('public')->path($zipFilePath);
+
+                    $zip = new \ZipArchive();
+                    if ($zip->open($zipPhysicalPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+                        foreach ($pdfFiles as $pdfFile) {
+                            $zip->addFile($pdfFile, basename($pdfFile));
+                        }
+                        $zip->close();
+                    }
+
+                    // Clean up temporary PDFs
+                    foreach ($pdfFiles as $pdfFile) {
+                        @unlink($pdfFile);
+                    }
+
+                    $filePath = $zipFilePath;
+                    $fileName = $zipFileName;
+                }
             }
 
             $request->update([
                 'status' => 'completed',
                 'progress' => 100,
                 'file_path' => $filePath,
+                'report_name' => $fileName,
                 'error_message' => null,
             ]);
-
         } catch (\Throwable $e) {
             $request->update([
                 'status' => 'failed',
                 'progress' => 0,
                 'error_message' => $e->getMessage() . "\n" . $e->getTraceAsString()
             ]);
+
+            // Set is_zip flag on the resolution so retries always download as ZIP
+            $resolutionModel = Resolution::find($request->resolution_id);
+            if ($resolutionModel) {
+                $resolutionModel->update(['is_zip' => true]);
+            }
+
             throw $e;
         }
     }
@@ -289,6 +377,12 @@ class GenerateReportJob implements ShouldQueue
                 'progress' => 0,
                 'error_message' => $exception->getMessage()
             ]);
+
+            // Set is_zip flag so retries always download as ZIP
+            $resolution = Resolution::find($this->downloadRequest->resolution_id);
+            if ($resolution) {
+                $resolution->update(['is_zip' => true]);
+            }
         }
     }
 }

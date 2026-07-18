@@ -126,7 +126,7 @@
                 <td>{{ $resolution->user->name }}</td>
                 <td>{{ $resolution->id }}</td>
                 <td>{{ $resolution->option_votes()->distinct('member_id')->count() }}</td>
-                <td>{{ $resolution->members->count() }}</td>
+                <td>{{ isset($totalMembersCount) ? $totalMembersCount : $resolution->members->count() }}</td>
             </tr>
             <tr>
                 <td>Voting Start / End Date and Time:</td>
@@ -140,8 +140,8 @@
 
         @php
             $totalMembers = $resolution->members;
-            $total_voting_of_share = $totalMembers->sum('share');
-            $total_numbers_of_members = $totalMembers->count();
+            $total_voting_of_share = isset($totalMembersCount) ? $resolution->members()->sum('share') : $totalMembers->sum('share');
+            $total_numbers_of_members = isset($totalMembersCount) ? $totalMembersCount : $totalMembers->count();
         @endphp
         <table border="1" cellpadding="6" cellspacing="0"
             style="width: 100%; border-collapse: collapse; font-family: 'DejaVu Sans', sans-serif;">

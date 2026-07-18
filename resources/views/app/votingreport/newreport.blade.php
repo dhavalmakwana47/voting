@@ -192,7 +192,7 @@
     <div class="content">
 
         @php
-            $resCount = $resolution->resolution_details->count();
+            $resCount = isset($totalResolutionDetailsCount) ? $totalResolutionDetailsCount : $resolution->resolution_details->count();
         @endphp
 
         @foreach ($resolution->resolution_details as $resolutionDetail)
